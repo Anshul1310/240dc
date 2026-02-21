@@ -19,6 +19,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme._240dc">
         <activity
+            android:name=".UnsupportedDeviceActivity"
+            android:exported="false" />
+        <activity
             android:name=".VideoList"
             android:exported="false" />
         <activity

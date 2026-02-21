@@ -1,9 +1,17 @@
 package com.anshul.a240dc;
 
+import android.content.Context;
+import android.content.Intent;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
+import android.hardware.camera2.CameraAccessException;
+import android.hardware.camera2.CameraCharacteristics;
+import android.hardware.camera2.CameraManager;
+import android.hardware.camera2.CameraMetadata;
+import android.hardware.camera2.params.StreamConfigurationMap;
 import android.os.Build;
 import android.os.Bundle;
+import android.util.Range;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
@@ -22,6 +30,56 @@ public class MainActivity extends AppCompatActivity {
     private String selectedIso = "400";
     private String selectedShutter = "1/240";
 
+    private boolean supportsHighSpeedVideo(int targetFps) {
+        CameraManager manager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
+
+        try {
+            // Loop through all cameras on the device (e.g., back, front, ultrawide)
+            for (String cameraId : manager.getCameraIdList()) {
+                CameraCharacteristics chars = manager.getCameraCharacteristics(cameraId);
+
+                // We usually only care about the main Back camera for Pro Video
+                Integer facing = chars.get(CameraCharacteristics.LENS_FACING);
+                if (facing != null && facing == CameraCharacteristics.LENS_FACING_FRONT) {
+                    continue; // Skip front cameras
+                }
+
+                // 1. Check if High Speed Video is a supported capability
+                int[] capabilities = chars.get(CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES);
+                boolean supportsHighSpeedMode = false;
+
+                if (capabilities != null) {
+                    for (int capability : capabilities) {
+                        if (capability == CameraMetadata.REQUEST_AVAILABLE_CAPABILITIES_CONSTRAINED_HIGH_SPEED_VIDEO) {
+                            supportsHighSpeedMode = true;
+                            break;
+                        }
+                    }
+                }
+
+                // 2. If high speed is supported, check if the max FPS hits our target (120 or 240)
+                if (supportsHighSpeedMode) {
+                    StreamConfigurationMap map = chars.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
+                    if (map != null) {
+                        // Get the allowed high-speed frame rate ranges from the hardware
+                        Range<Integer>[] fpsRanges = map.getHighSpeedVideoFpsRanges();
+
+                        for (Range<Integer> range : fpsRanges) {
+                            if (range.getUpper() >= targetFps) {
+                                return true; // Success! The camera supports the target FPS.
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (CameraAccessException e) {
+            e.printStackTrace();
+        }
+
+        // If the loop finishes without returning true, the device doesn't support it
+        return false;
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -30,7 +88,13 @@ public class MainActivity extends AppCompatActivity {
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
                 WindowManager.LayoutParams.FLAG_FULLSCREEN);
-
+        if (!supportsHighSpeedVideo(120)) {
+            // DEVICE NOT SUPPORTED: Redirect to the fallback page
+            Intent intent = new Intent(this, UnsupportedDeviceActivity.class);
+            startActivity(intent);
+            finish(); // Close this activity so the user can't press 'back' into it
+            return; // Stop executing the rest of onCreate
+        }
         setContentView(R.layout.activity_main);
 
         setupFpsToggle();
