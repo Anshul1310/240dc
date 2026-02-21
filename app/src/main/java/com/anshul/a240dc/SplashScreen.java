@@ -46,7 +46,7 @@ public class SplashScreen extends AppCompatActivity {
             @Override
             public void onAnimationEnd(Animator animation) {
                 // Animation finished, navigate to MainActivity
-                startActivity(new Intent(SplashScreen.this, VideoList.class));
+                startActivity(new Intent(SplashScreen.this, MainActivity.class));
                 finish(); // Close SplashActivity so user can't go back to it
             }
 

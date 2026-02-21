@@ -1,244 +1,130 @@
 package com.anshul.a240dc;
 
-import android.Manifest;
-import android.content.Context;
-import android.content.pm.PackageManager;
+import android.content.res.ColorStateList;
 import android.graphics.Color;
-import android.hardware.camera2.*;
-import android.media.MediaRecorder;
-import android.media.MediaScannerConnection;
+import android.os.Build;
 import android.os.Bundle;
-import android.os.Environment;
-import android.util.Range;
-import android.view.Surface;
-import android.widget.Button;
+import android.view.View;
+import android.view.Window;
+import android.view.WindowManager;
 import android.widget.Toast;
 
-import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
-import java.io.File;
-import java.text.SimpleDateFormat;
-import java.util.Collections;
-import java.util.Date;
-import java.util.List;
-import java.util.Locale;
+import com.google.android.material.button.MaterialButtonToggleGroup;
+import com.google.android.material.chip.Chip;
+import com.google.android.material.chip.ChipGroup;
 
 public class MainActivity extends AppCompatActivity {
 
-    private static final int CAMERA_PERMISSION_CODE = 101;
-    private Button btnRecord;
-    private boolean isRecording = false;
-
-    private CameraManager cameraManager;
-    private CameraDevice cameraDevice;
-    private MediaRecorder mediaRecorder;
-    private CameraConstrainedHighSpeedCaptureSession captureSession;
-
-    // Store the path globally so we can show it when recording stops
-    private String currentVideoFilePath = "";
+    private String selectedFps = "120";
+    private String selectedIso = "400";
+    private String selectedShutter = "1/240";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // Hide status bar for full-screen camera experience
+        requestWindowFeature(Window.FEATURE_NO_TITLE);
+        getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
+                WindowManager.LayoutParams.FLAG_FULLSCREEN);
+
         setContentView(R.layout.activity_main);
 
-        btnRecord = findViewById(R.id.btnRecord);
-        cameraManager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
+        setupFpsToggle();
+        setupIsoDial();
+        setupShutterDial();
 
-        checkPermissions();
+        // Record Button Click
+        findViewById(R.id.btn_record).setOnClickListener(v -> {
+            String metadata = "Recording at " + selectedFps + " FPS | ISO " + selectedIso + " | Speed " + selectedShutter;
+            Toast.makeText(MainActivity.this, metadata, Toast.LENGTH_SHORT).show();
+            // Start your Camera2 recording logic here
+        });
+    }
 
-        btnRecord.setOnClickListener(v -> {
-            if (isRecording) {
-                stopRecording();
-            } else {
-                startRecording();
+    private void setupFpsToggle() {
+        MaterialButtonToggleGroup toggleGroup = findViewById(R.id.toggle_fps);
+        toggleGroup.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
+            if (isChecked) {
+                if (checkedId == R.id.btn_120fps) {
+                    selectedFps = "120";
+                } else if (checkedId == R.id.btn_240fps) {
+                    selectedFps = "240";
+                }
             }
         });
     }
 
-    private void checkPermissions() {
-        String[] permissions = {
-                Manifest.permission.CAMERA,
-                Manifest.permission.RECORD_AUDIO,
-                Manifest.permission.WRITE_EXTERNAL_STORAGE
+    private void setupIsoDial() {
+        ChipGroup chipGroupIso = findViewById(R.id.chipGroup_iso);
+        String[] isoValues = {"100", "200", "400", "800", "1600", "3200", "6400"};
+
+        for (String iso : isoValues) {
+            Chip chip = createProChip(iso);
+            chipGroupIso.addView(chip);
+            if (iso.equals(selectedIso)) {
+                chip.setChecked(true);
+            }
+        }
+
+        chipGroupIso.setOnCheckedStateChangeListener((group, checkedIds) -> {
+            if (!checkedIds.isEmpty()) {
+                Chip chip = findViewById(checkedIds.get(0));
+                selectedIso = chip.getText().toString();
+            }
+        });
+    }
+
+    private void setupShutterDial() {
+        ChipGroup chipGroupShutter = findViewById(R.id.chipGroup_shutter);
+        String[] shutterValues = {"1/60", "1/120", "1/240", "1/480", "1/1000", "1/2000", "1/4000"};
+
+        for (String speed : shutterValues) {
+            Chip chip = createProChip(speed);
+            chipGroupShutter.addView(chip);
+            if (speed.equals(selectedShutter)) {
+                chip.setChecked(true);
+            }
+        }
+
+        chipGroupShutter.setOnCheckedStateChangeListener((group, checkedIds) -> {
+            if (!checkedIds.isEmpty()) {
+                Chip chip = findViewById(checkedIds.get(0));
+                selectedShutter = chip.getText().toString();
+            }
+        });
+    }
+
+    // Helper method to create a sleek Samsung-style chip
+    private Chip createProChip(String text) {
+        Chip chip = new Chip(this);
+        chip.setText(text);
+        chip.setCheckable(true);
+        chip.setClickable(true);
+        chip.setCheckedIconVisible(false); // Hide the default checkmark
+
+        // Custom styling: Black background, white text unselected, yellow text selected
+        chip.setChipBackgroundColorResource(android.R.color.transparent);
+
+        // Create color state lists for text and borders
+        int colorUnselected = ContextCompat.getColor(this, R.color.white);
+        int colorSelected = ContextCompat.getColor(this, R.color.pro_accent_yellow);
+
+        int[][] states = new int[][] {
+                new int[] { android.R.attr.state_checked }, // checked
+                new int[] { -android.R.attr.state_checked } // unchecked
         };
 
-        boolean needsPermission = false;
-        for (String p : permissions) {
-            if (ContextCompat.checkSelfPermission(this, p) != PackageManager.PERMISSION_GRANTED) {
-                needsPermission = true;
-                break;
-            }
-        }
+        int[] colors = new int[] { colorSelected, colorUnselected };
+        ColorStateList colorStateList = new ColorStateList(states, colors);
 
-        if (needsPermission) {
-            ActivityCompat.requestPermissions(this, permissions, CAMERA_PERMISSION_CODE);
-        } else {
-            openCamera();
-        }
-    }
+        chip.setTextColor(colorStateList);
+        chip.setChipStrokeColor(colorStateList);
+        chip.setChipStrokeWidth(2f);
 
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == CAMERA_PERMISSION_CODE) {
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                openCamera();
-            } else {
-                Toast.makeText(this, "Permissions required to record video.", Toast.LENGTH_SHORT).show();
-            }
-        }
-    }
-
-    private void openCamera() {
-        try {
-            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
-                String cameraId = cameraManager.getCameraIdList()[0];
-                cameraManager.openCamera(cameraId, new CameraDevice.StateCallback() {
-                    @Override
-                    public void onOpened(@NonNull CameraDevice camera) {
-                        cameraDevice = camera;
-                    }
-
-                    @Override
-                    public void onDisconnected(@NonNull CameraDevice camera) {
-                        camera.close();
-                    }
-
-                    @Override
-                    public void onError(@NonNull CameraDevice camera, int error) {
-                        camera.close();
-                    }
-                }, null);
-            }
-        } catch (CameraAccessException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void setupMediaRecorder() {
-        try {
-            mediaRecorder = new MediaRecorder();
-            mediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
-            mediaRecorder.setVideoSource(MediaRecorder.VideoSource.SURFACE);
-            mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
-
-            File videoDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM);
-            if (!videoDir.exists()) {
-                videoDir.mkdirs();
-            }
-
-            File videoFile = new File(
-                    videoDir,
-                    "HighSpeed_" + new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date()) + ".mp4"
-            );
-
-            // Save the path to the global variable
-            currentVideoFilePath = videoFile.getAbsolutePath();
-            mediaRecorder.setOutputFile(currentVideoFilePath);
-
-            // Set for 1080p at 240fps
-            mediaRecorder.setVideoEncodingBitRate(100_000_000);
-            mediaRecorder.setVideoFrameRate(240);
-            mediaRecorder.setVideoSize(1920, 1080);
-            mediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264);
-            mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
-            mediaRecorder.prepare();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void startRecording() {
-        if (cameraDevice == null) return;
-        setupMediaRecorder();
-
-        try {
-            Surface recorderSurface = mediaRecorder.getSurface();
-            CaptureRequest.Builder captureRequestBuilder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_RECORD);
-            captureRequestBuilder.addTarget(recorderSurface);
-
-            Range<Integer> fpsRange = new Range<>(240, 240);
-            captureRequestBuilder.set(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, fpsRange);
-
-            List<Surface> surfaces = Collections.singletonList(recorderSurface);
-
-            cameraDevice.createConstrainedHighSpeedCaptureSession(
-                    surfaces,
-                    new CameraCaptureSession.StateCallback() {
-                        @Override
-                        public void onConfigured(@NonNull CameraCaptureSession session) {
-                            captureSession = (CameraConstrainedHighSpeedCaptureSession) session;
-                            try {
-                                List<CaptureRequest> requestList = captureSession.createHighSpeedRequestList(captureRequestBuilder.build());
-                                captureSession.setRepeatingBurst(requestList, null, null);
-                                mediaRecorder.start();
-
-                                runOnUiThread(() -> {
-                                    isRecording = true;
-                                    btnRecord.setText("STOP");
-                                    btnRecord.setBackgroundColor(Color.DKGRAY);
-                                    Toast.makeText(MainActivity.this, "Recording 240FPS...", Toast.LENGTH_SHORT).show();
-                                });
-                            } catch (CameraAccessException e) {
-                                e.printStackTrace();
-                            }
-                        }
-
-                        @Override
-                        public void onConfigureFailed(@NonNull CameraCaptureSession session) {
-                            Toast.makeText(MainActivity.this, "Failed to configure camera", Toast.LENGTH_SHORT).show();
-                        }
-                    },
-                    null
-            );
-        } catch (CameraAccessException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void stopRecording() {
-        try {
-            if (captureSession != null) {
-                captureSession.stopRepeating();
-                captureSession.close();
-            }
-            if (mediaRecorder != null) {
-                mediaRecorder.stop();
-                mediaRecorder.reset();
-            }
-
-            isRecording = false;
-            btnRecord.setText("RECORD");
-            btnRecord.setBackgroundColor(Color.RED);
-
-            // Show the exact file path in the Toast
-            Toast.makeText(this, "Saved: " + currentVideoFilePath, Toast.LENGTH_LONG).show();
-
-            // Notify the Android gallery that a new video has been created
-            MediaScannerConnection.scanFile(this,
-                    new String[]{currentVideoFilePath}, null,
-                    (path, uri) -> {
-                        // The gallery now knows about the file
-                    });
-
-            openCamera();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        if (cameraDevice != null) {
-            cameraDevice.close();
-        }
-        if (mediaRecorder != null) {
-            mediaRecorder.release();
-        }
+        return chip;
     }
 }
