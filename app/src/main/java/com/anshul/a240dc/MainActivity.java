@@ -7,8 +7,8 @@ import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCaptureSession;
-import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraConstrainedHighSpeedCaptureSession;
+import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.CameraManager;
 import android.hardware.camera2.CameraMetadata;
@@ -55,6 +55,9 @@ public class MainActivity extends AppCompatActivity {
     private TextView tvTimer;
     private ImageView btnPauseResume, btnStop, btnRecord;
 
+    // Recording Info Overlays
+    private TextView tvRecFps, tvRecIso, tvRecShutter;
+
     // Recording Variables
     private boolean isRecording = false;
     private boolean isPaused = false;
@@ -87,12 +90,18 @@ public class MainActivity extends AppCompatActivity {
 
         setContentView(R.layout.activity_main);
 
+        // Bind Base UI
         groupSettings = findViewById(R.id.group_settings);
         groupRecording = findViewById(R.id.group_recording);
         tvTimer = findViewById(R.id.tv_timer);
         btnRecord = findViewById(R.id.btn_record);
         btnPauseResume = findViewById(R.id.btn_pause_resume);
         btnStop = findViewById(R.id.btn_stop);
+
+        // Bind Recording Overlays
+        tvRecFps = findViewById(R.id.tv_rec_fps);
+        tvRecIso = findViewById(R.id.tv_rec_iso);
+        tvRecShutter = findViewById(R.id.tv_rec_shutter);
 
         setupFpsToggle();
         setupIsoDial();
@@ -110,7 +119,8 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         startBackgroundThread();
-        openCamera(); // Open camera in background, ready to record
+        // Since we have no live preview, we just open the camera immediately in the background
+        openCamera();
     }
 
     @Override
@@ -193,11 +203,12 @@ public class MainActivity extends AppCompatActivity {
         try {
             setupMediaRecorder();
 
+            // The MediaRecorder surface is our ONLY target, perfect for "no preview" high-speed recording
             Surface recorderSurface = mediaRecorder.getSurface();
             CaptureRequest.Builder captureBuilder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_RECORD);
             captureBuilder.addTarget(recorderSurface);
 
-            // Apply the UI Settings to the Camera Hardware
+            // Apply the user's manual settings to the hardware
             applyManualSettingsToCamera(captureBuilder);
 
             // Create High Speed Session targeting ONLY the MediaRecorder
@@ -219,11 +230,16 @@ public class MainActivity extends AppCompatActivity {
                                     secondsRecorded = 0;
                                     updateTimerText();
 
+                                    // Set the overlay texts to match the chosen settings
+                                    tvRecFps.setText(selectedFps + " FPS");
+                                    tvRecIso.setText("ISO " + selectedIso);
+                                    tvRecShutter.setText(selectedShutter + "s");
+
+                                    // Swap the UI groups
                                     groupSettings.setVisibility(View.GONE);
                                     groupRecording.setVisibility(View.VISIBLE);
 
                                     timerHandler.postDelayed(timerRunnable, 1000);
-                                    Toast.makeText(MainActivity.this, "Recording: " + selectedFps + "FPS | ISO " + selectedIso, Toast.LENGTH_SHORT).show();
                                 });
                             } catch (CameraAccessException e) {
                                 e.printStackTrace();
@@ -254,8 +270,8 @@ public class MainActivity extends AppCompatActivity {
         videoFile = new File(videoFolder, "VID_" + System.currentTimeMillis() + ".mp4");
         mediaRecorder.setOutputFile(videoFile.getAbsolutePath());
 
-        mediaRecorder.setVideoEncodingBitRate(20_000_000);
-        mediaRecorder.setVideoFrameRate(Integer.parseInt(selectedFps));
+        mediaRecorder.setVideoEncodingBitRate(20_000_000); // High quality bitrate
+        mediaRecorder.setVideoFrameRate(Integer.parseInt(selectedFps)); // 120 or 240
         mediaRecorder.setVideoSize(1920, 1080); // Requirement from hackathon PDF
         mediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264);
         mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
@@ -382,7 +398,7 @@ public class MainActivity extends AppCompatActivity {
         }
         chipGroupIso.setOnCheckedStateChangeListener((group, checkedIds) -> {
             if (!checkedIds.isEmpty()) {
-                Chip chip = findViewById(checkedIds.get(0));
+                Chip chip = group.findViewById(checkedIds.get(0));
                 if (chip != null) selectedIso = chip.getText().toString();
             }
         });
@@ -398,7 +414,7 @@ public class MainActivity extends AppCompatActivity {
         }
         chipGroupShutter.setOnCheckedStateChangeListener((group, checkedIds) -> {
             if (!checkedIds.isEmpty()) {
-                Chip chip = findViewById(checkedIds.get(0));
+                Chip chip = group.findViewById(checkedIds.get(0));
                 if (chip != null) selectedShutter = chip.getText().toString();
             }
         });

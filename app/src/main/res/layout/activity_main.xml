@@ -144,55 +144,112 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:visibility="gone"
-        app:constraint_referenced_ids="tv_timer,recording_control_panel" />
+        app:constraint_referenced_ids="recording_overlay,tv_timer,btn_stop,btn_pause_resume,ic_recording_dot,settings_display_layout,waveform_placeholder" />
+
+    <View
+        android:id="@+id/recording_overlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#FF000000" />
+
+    <ImageView
+        android:id="@+id/ic_recording_dot"
+        android:layout_width="16dp"
+        android:layout_height="16dp"
+        android:layout_marginStart="32dp"
+        android:layout_marginTop="48dp"
+        android:src="@drawable/ic_record_circle"
+        app:tint="#FF0000"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
     <TextView
         android:id="@+id/tv_timer"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
         android:text="00:00"
         android:textColor="@color/white"
-        android:textSize="48sp"
+        android:textSize="28sp"
         android:textStyle="bold"
-        android:shadowColor="#000000"
-        android:shadowDx="2"
-        android:shadowDy="2"
-        android:shadowRadius="4"
+        app:layout_constraintBottom_toBottomOf="@+id/ic_recording_dot"
+        app:layout_constraintStart_toEndOf="@+id/ic_recording_dot"
+        app:layout_constraintTop_toTopOf="@+id/ic_recording_dot" />
+
+    <LinearLayout
+        android:id="@+id/settings_display_layout"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="32dp"
+        android:orientation="horizontal"
+        app:layout_constraintBottom_toBottomOf="@+id/tv_timer"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="@+id/tv_timer">
+
+        <TextView
+            android:id="@+id/tv_rec_fps"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="16dp"
+            android:textColor="@color/pro_accent_yellow"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            tools:text="120 FPS" />
+
+        <TextView
+            android:id="@+id/tv_rec_iso"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="16dp"
+            android:textColor="@color/pro_accent_yellow"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            tools:text="ISO 400" />
+
+        <TextView
+            android:id="@+id/tv_rec_shutter"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/pro_accent_yellow"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            tools:text="1/240s" />
+    </LinearLayout>
+
+    <View
+        android:id="@+id/waveform_placeholder"
+        android:layout_width="match_parent"
+        android:layout_height="120dp"
+        android:layout_marginBottom="24dp"
+        android:background="#15FFFFFF"
+        app:layout_constraintBottom_toTopOf="@+id/btn_stop" />
+
+    <ImageView
+        android:id="@+id/btn_pause_resume"
+        android:layout_width="64dp"
+        android:layout_height="64dp"
+        android:layout_marginEnd="32dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:clickable="true"
+        android:focusable="true"
+        android:src="@android:drawable/ic_media_pause"
+        app:layout_constraintBottom_toBottomOf="@+id/btn_stop"
+        app:layout_constraintEnd_toStartOf="@+id/btn_stop"
+        app:layout_constraintTop_toTopOf="@+id/btn_stop"
+        app:tint="@color/white" />
+
+    <ImageView
+        android:id="@+id/btn_stop"
+        android:layout_width="80dp"
+        android:layout_height="80dp"
+        android:layout_marginBottom="48dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:clickable="true"
+        android:focusable="true"
+        android:src="@drawable/ic_record_circle"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
-
-    <androidx.constraintlayout.widget.ConstraintLayout
-        android:id="@+id/recording_control_panel"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:paddingBottom="48dp"
-        app:layout_constraintBottom_toBottomOf="parent">
-
-        <ImageView
-            android:id="@+id/btn_pause_resume"
-            android:layout_width="64dp"
-            android:layout_height="64dp"
-            android:layout_marginEnd="32dp"
-            android:src="@android:drawable/ic_media_pause"
-            app:tint="@color/white"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            app:layout_constraintBottom_toBottomOf="@+id/btn_stop"
-            app:layout_constraintEnd_toStartOf="@+id/btn_stop"
-            app:layout_constraintTop_toTopOf="@+id/btn_stop" />
-
-        <ImageView
-            android:id="@+id/btn_stop"
-            android:layout_width="72dp"
-            android:layout_height="72dp"
-            android:src="@drawable/ic_record_circle"
-            app:tint="@color/white"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent" />
-
-    </androidx.constraintlayout.widget.ConstraintLayout>
+        app:tint="@color/white" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
